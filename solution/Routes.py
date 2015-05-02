@@ -50,18 +50,22 @@ def init_network(roads):
     lenght     = element[id_lenght]
     speedlimit = element[id_speedlimit]
     time       = element[id_lenght]/element[id_speedlimit]
-
+	
+	# On ajoute les informations de l'autoroute au dictionnaire
     network[0][road] = (city1,city2,lenght,speedlimit,time)
     
+	
+	# On ajoute la ville de départ comme clé dans le dictionnaire 
     if city1 not in network[1]:
       network[1][city1] = ([],[])
-      
+	# On ajoute l'autoroute dans les 'autoroutes de départ' de la ville
     if road not in network[1][city1]:
       network[1][city1][0].append(road)
       
+	# On ajoute la ville de fin comme clé dans le dictionnaire 
     if city2 not in network[1]:
       network[1][city2] = ([],[])
-      
+    # On ajoute l'autoroute dans les 'autoroutes de fin' de la ville
     if road not in network[1][city2]:
       network[1][city2][1].append(road)
   
@@ -93,8 +97,10 @@ def get_shortest_route_floyd(network, start,destination, excludings=[]):
 
   # On récupère la liste des villes
   list_city = network[1].keys()
-
-  if start not in list_city or destination not in list_city and ex
+  
+  # Si la ville de départ ou de fin n'existe pas
+  if start not in list_city or destination not in list_city:
+    return None
 
   # On retire les villes à exclure
   list_city = [x for x in list_city if x not in excludings]
@@ -105,6 +111,7 @@ def get_shortest_route_floyd(network, start,destination, excludings=[]):
   distance = []
   n = len(list_city)
 
+  
   # On construit la matrice adjacente où indique la distance si il existe une autoroute entre 2 villes
   for x in range(n): 
     matrix.append( [] )
@@ -115,24 +122,30 @@ def get_shortest_route_floyd(network, start,destination, excludings=[]):
         matrix[x].append( get_length(network,road_id) )
       else:
         matrix[x].append( None )
-      distance[x].append( [road_id] )
+      distance[x].append( [road_id] ) # Autoroute -> format: ['LA']
 
+	  
   # Algorithme de Floyd
   for k in range(n):
     for i in range(n):
       for j in range(n):
         if ( matrix[i][k] != None and matrix[k][j] != None ) and ( ( matrix[i][j] == None  ) or ( matrix[i][j] > matrix[i][k] + matrix[k][j] ) ):
           matrix[i][j] = matrix[i][k] + matrix[k][j]
+		  
+		  # Hors Floyd / Ajout personnel
           if i != k and j != k: # Si i == k ou j == k, cela veut dire qu'on additionne un résultat supplémentaire à la case ij
             distance[i][j] = [] # Sinon ca signifie qu'on a trouvé un chemin plus court, du coup on supprime l'ancien chemin
-          distance[i][j].extend( distance[i][k] ) # Chemin d'autoroute parcouru en plus
-          distance[i][j].extend( distance[k][j] ) # Chemin d'autoroute parcouru en plus
+          distance[i][j].extend( distance[i][k] ) # Chemin d'autoroute parcouru en plus -> format: ['LA','AH']
+          distance[i][j].extend( distance[k][j] ) # Chemin d'autoroute parcouru en plus -> format: ['LA','AH']
 
+		  
   # On récupère simplement la liste des autoroutes parcourus
   idx_start        = list_city.index( start )
   idx_destination  = list_city.index( destination )
   distance_minimum = distance[ idx_start ][ idx_destination ]
 
+  
+  # Si on ne trouve aucune solution, on renvoie None
   if distance_minimum == [None]:
     distance_minimum = None
   
@@ -155,20 +168,34 @@ def get_shortest_route_floyd(network, start,destination, excludings=[]):
 def get_quickest_route_via(network, start,destination, vias):
   """ Returns the quickest route from the given start city to the given destination city
         while visiting the intermediate cities (vias) in order. """
-  road = []
+  # On récupère la liste des villes
+  list_city = network[1].keys()
+  
+  # On vérifie que toutes les villes existent
+  for via in vias:
+    if via not in list_city:
+	  return None
+	  
+  # On utilise Floyd pour parcourir les chemins les plus rapide de ville ne ville
+  roads = []
   done = []
   city_previous = start
   for via in vias:
-    print road
-    road.extend( get_shortest_route_floyd(network, city_previous,via) )
-    done.append( via )
-    city_previous = via
-    print road
-  road.extend( get_shortest_route_floyd(network, city_previous,destination) )
-
-  print road
-  
-  return road
+	road = get_shortest_route_floyd(network, city_previous, via) #done[:-1]) # dépend si on peut ou pas repasser par les villes déjà visité
+	if road != None:
+	  roads.extend( road )
+	  done.append( via )
+	  city_previous = via
+	  
+  # On utilise Floyd pour finir le parcourt jusqu'à la ville de fin
+  road = get_shortest_route_floyd(network, city_previous,destination) #done[:-1]) # dépend si on peut ou pas repasser par les villes déjà visité
+  if road != None:
+    roads.extend( road )
+	
+  # Si on trouve rien, on renvoie None
+  if roads == []:
+    return None
+  return roads
 
 
 
